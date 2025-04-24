@@ -238,7 +238,9 @@ node server.js
     - 偵測 ChatGPT 頁面是否包含 `$log`, `$save`, `$完成`
     - 抓取整段使用者與 AI 對話
     - 自動送出 POST 至 `/api/log-conversation`
-[![image.png](attachment:20fab774-13f3-4942-9384-bac0c0a19051:image.png)](https://github.com/sjctyjin/Dev_Logger/blob/main/dev-log.jpg)
+
+![IIS設定](https://blog.miniasp.com/image.axd?picture=image_2488.png)
+
 ---
 
 ## ✅ 常見重建流程清單
