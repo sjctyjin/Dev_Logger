@@ -4,6 +4,10 @@
 
 ---
 
+```bat
+git clone https://github.com/sjctyjin/Work_Logger.git
+```
+
 ## 🧰 環境準備
 
 ### ✅ 安裝 Node.js
