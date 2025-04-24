@@ -171,8 +171,8 @@ GO
 ### 1. 建立新資料夾與初始化
 
 ```bash
-mkdir Dev_Logger
-cd Dev_Logger
+mkdir dev-logger-viewer
+cd dev-logger-viewer
 npm init -y
 ```
 
