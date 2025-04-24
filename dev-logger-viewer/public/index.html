@@ -1,0 +1,872 @@
+<!-- <!DOCTYPE html> -->
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>開發日誌查看器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .conversation-list {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .conversation-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .conversation-item:hover {
+            background-color: #f8f9fa;
+        }
+        .conversation-item.active {
+            background-color: #e9ecef;
+        }
+        .badge-category {
+            font-size: 0.8em;
+        }
+        .conversation-detail {
+            max-height: calc(100vh - 130px);
+            overflow-y: auto;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        .no-conversation-selected {
+            display: flex;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        /* 對話流樣式 */
+        .conversation-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 10px 0;
+            position: relative;
+        }
+
+        /* 用戶問題樣式 */
+        .user-query {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 90%;
+            align-self: flex-end;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* AI回答樣式 */
+        .ai-response {
+            background-color: #f5f5f5;
+            border-left: 4px solid #9e9e9e;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 90%;
+            align-self: flex-start;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 對話頭部樣式 */
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* 對話序號樣式 */
+        .message-number {
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        /* 用戶頭像和AI頭像 */
+        .user-icon, .ai-icon {
+            font-size: 14px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            color: white;
+        }
+
+        .user-icon {
+            background-color: #2196f3;
+        }
+
+        .ai-icon {
+            background-color: #9e9e9e;
+        }
+
+        /* 對話內容樣式 */
+        .message-content {
+            line-height: 1.5;
+            overflow-wrap: break-word;
+        }
+
+        /* 反應按鈕 */
+        .message-reactions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+        }
+
+        .reaction-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 0.9em;
+            color: #757575;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .reaction-button:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Markdown 增強 */
+        .message-content ul, 
+        .message-content ol {
+            padding-left: 20px;
+        }
+
+        .message-content p {
+            margin-bottom: 10px;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid #e0e0e0;
+            padding-left: 10px;
+            margin-left: 0;
+            color: #616161;
+        }
+
+        /* 在 <style> 區塊中添加或修改以下樣式 */
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+.card {
+  background-color: #1e1e1e;
+  border-color: #333;
+}
+
+.card-header {
+  background-color: #252525;
+  border-bottom-color: #333;
+}
+
+.list-group-item {
+  background-color: #1e1e1e;
+  border-color: #333;
+  color: #e0e0e0;
+}
+
+.list-group-item:hover {
+  background-color: #252525;
+}
+
+.list-group-item.active {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.text-muted {
+  color: #aaa !important;
+}
+
+.conversation-item:hover {
+  background-color: #252525;
+}
+
+.user-query {
+  background-color: #0d47a1;
+  border-left: 4px solid #1976d2;
+}
+
+.ai-response {
+  background-color: #2d2d2d;
+  border-left: 4px solid #757575;
+}
+
+/* 代碼區塊樣式 */
+pre {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+}
+
+.message-number {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 適配高亮樣式 */
+.hljs {
+  background-color: #2d2d2d;
+}
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="text-center mb-4">開發日誌查看器</h1>
+        
+        <div class="row">
+            <!-- 左側邊欄：專案與搜索 -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        專案列表
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush" id="project-list">
+                            <li class="list-group-item text-center">載入中...</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header bg-success text-white">
+                        搜索
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="search-keyword" placeholder="搜索關鍵詞...">
+                        </div>
+                        <div class="mb-3">
+                            <select class="form-select" id="search-category">
+                                <option value="">所有類別</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">日期範圍</label>
+                            <input type="date" class="form-control mb-2" id="search-start-date">
+                            <input type="date" class="form-control" id="search-end-date">
+                        </div>
+                        <button class="btn btn-success w-100" id="search-button">搜索</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 中間：對話列表 -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <span id="conversation-list-title">對話列表</span>
+                        <span class="badge bg-light text-dark" id="conversation-count">0</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush conversation-list" id="conversation-list">
+                            <li class="list-group-item text-center">請選擇一個專案或進行搜索</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右側：對話內容 -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="conversation-title">對話詳情</span>
+                            <span class="badge bg-primary" id="conversation-date"></span>
+                        </div>
+                    </div>
+                    <div class="card-body conversation-detail" id="conversation-detail">
+                        <div class="no-conversation-selected">
+                            <h5>請選擇一個對話以查看詳情</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/lib/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.2.4/marked.min.js"></script>
+    <script>
+        // API URL
+        // const API_BASE_URL = 'http://localhost:3001/api';
+        const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`;
+        // const getHostUrl = () => {
+        // // 從環境變量獲取，或使用默認值
+        // const host = process.env.HOST || 'localhost';
+        // const port = process.env.PORT || '3001';
+        // return `http://${host}:${port}/api`;
+        // };
+
+        // DOM元素
+        const projectList = document.getElementById('project-list');
+        const conversationList = document.getElementById('conversation-list');
+        const conversationListTitle = document.getElementById('conversation-list-title');
+        const conversationCount = document.getElementById('conversation-count');
+        const conversationTitle = document.getElementById('conversation-title');
+        const conversationDate = document.getElementById('conversation-date');
+        const conversationDetail = document.getElementById('conversation-detail');
+        const searchKeyword = document.getElementById('search-keyword');
+        const searchCategory = document.getElementById('search-category');
+        const searchStartDate = document.getElementById('search-start-date');
+        const searchEndDate = document.getElementById('search-end-date');
+        const searchButton = document.getElementById('search-button');
+        
+        // 載入專案列表
+        async function loadProjects() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/projects`);
+                const projects = await response.json();
+                
+                if (projects.length === 0) {
+                    projectList.innerHTML = '<li class="list-group-item text-center">沒有專案</li>';
+                    return;
+                }
+                
+                projectList.innerHTML = projects.map(project => `
+                    <li class="list-group-item project-item" data-project-id="${project.ProjectID}">
+                        ${project.ProjectName}
+                    </li>
+                `).join('');
+                
+                // 添加點擊事件
+                document.querySelectorAll('.project-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const projectId = this.getAttribute('data-project-id');
+                        loadConversations(projectId);
+                        
+                        // 更新活動狀態
+                        document.querySelectorAll('.project-item').forEach(p => p.classList.remove('active'));
+                        this.classList.add('active');
+                    });
+                });
+            } catch (error) {
+                console.error('載入專案失敗:', error);
+                projectList.innerHTML = '<li class="list-group-item text-center text-danger">載入失敗</li>';
+            }
+        }
+        
+        // 載入對話列表
+        async function loadConversations(projectId) {
+            try {
+                conversationList.innerHTML = '<li class="list-group-item text-center">載入中...</li>';
+                
+                const response = await fetch(`${API_BASE_URL}/conversations/${projectId}`);
+                const conversations = await response.json();
+                
+                if (conversations.length === 0) {
+                    conversationList.innerHTML = '<li class="list-group-item text-center">沒有對話</li>';
+                    conversationCount.textContent = '0';
+                    return;
+                }
+                
+                conversationListTitle.textContent = '專案對話';
+                conversationCount.textContent = conversations.length;
+                
+                conversationList.innerHTML = conversations.map(conv => {
+                    const statusMap = {
+                        resolved: { text: '✅ 已解決', class: 'bg-success text-white' },
+                        pending: { text: '🕓 待處理', class: 'bg-danger text-white' },
+                        other: { text: '📌 其他', class: 'bg-warning text-dark' }
+                    };
+
+                    const { text: statusText, class: badgeClass } = conv.StatusTag && statusMap[conv.StatusTag]
+                        ? statusMap[conv.StatusTag]
+                        : { text: '❓ 未標記', class: 'bg-secondary text-white' };
+
+                    return `
+                        <li class="list-group-item conversation-item" data-conversation-id="${conv.ConversationID}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">${conv.Title || '無標題'}</div>
+                                    <small class="text-muted">${formatDate(new Date(conv.CreatedDate))}</small>
+                                </div>
+                                <span class="badge bg-secondary badge-category">${conv.Category || '未分類'}</span>
+                            </div>
+                            <div class="small text-truncate mt-1">${conv.Summary || '無摘要'}</div>
+                            <span class="badge ${badgeClass}"><i class="bi bi-tag-fill"></i> 狀態：${statusText}</span>
+                        </li>
+                    `;
+                }).join('');
+
+                
+                // 添加點擊事件
+                addConversationClickListeners();
+            } catch (error) {
+                console.error('載入對話失敗:', error);
+                conversationList.innerHTML = '<li class="list-group-item text-center text-danger">載入失敗</li>';
+            }
+        }
+        
+        // 載入單個對話詳情
+        async function loadConversationDetail(conversationId) {
+            try {
+                conversationDetail.innerHTML = '<div class="text-center my-5"><div class="spinner-border" role="status"></div><div class="mt-2">載入中...</div></div>';
+                
+                const response = await fetch(`${API_BASE_URL}/conversation/${conversationId}`);
+                const conversation = await response.json();
+                
+                conversationTitle.textContent = conversation.Title || '無標題對話';
+                conversationDate.textContent = formatDate(new Date(conversation.CreatedDate));
+                
+                // 解析帶有段落標記的消息
+                const userMessages = parseMessagesByParagraphMarker(conversation.UserQuery);
+                const aiMessages = parseMessagesByParagraphMarker(conversation.AIResponse);
+                
+                // 創建段落映射，將段落編號映射到消息內容
+                const paragraphMap = new Map();
+                
+                // 添加用戶消息到映射
+                userMessages.forEach(msg => {
+                    if (!paragraphMap.has(msg.paragraphNumber)) {
+                        paragraphMap.set(msg.paragraphNumber, {});
+                    }
+                    paragraphMap.get(msg.paragraphNumber).user = msg.content;
+                });
+                
+                // 添加 AI 消息到映射
+                aiMessages.forEach(msg => {
+                    if (!paragraphMap.has(msg.paragraphNumber)) {
+                        paragraphMap.set(msg.paragraphNumber, {});
+                    }
+                    paragraphMap.get(msg.paragraphNumber).ai = msg.content;
+                });
+                
+                // 按段落編號排序
+                const sortedParagraphs = [...paragraphMap.entries()].sort((a, b) => a[0] - b[0]);
+                const statusMap = {
+                    resolved: '✅ 已解決',
+                    pending: '🕓 待處理',
+                    other: '📌 其他'
+                };
+
+                const statusText = conversation.StatusTag ? statusMap[conversation.StatusTag] || conversation.StatusTag : '❓ 未標記';
+
+                // 開始構建對話內容
+                let detailHTML = `
+                    <div class="mb-3">
+                        <h5 class="badge bg-secondary">${conversation.Category || '未分類'}</h5>
+                        <p class="fst-italic">${conversation.Summary || '無摘要'}</p>
+                    </div>
+                    <div class="conversation-flow" id="conversation-messages">
+                `;
+                detailHTML = `
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-tag-fill"></i> 狀態：${statusText}</span>
+                </div>
+                ` + detailHTML;
+                // 如果沒有找到段落標記，顯示備用視圖
+                if (sortedParagraphs.length === 0) {
+                    detailHTML += `
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            這個對話沒有段落標記。可能是在段落標記功能添加之前保存的對話。
+                        </div>
+                        <div class="user-query">
+                            <div class="message-header">
+                                <div>
+                                    <span class="user-icon">U</span>
+                                    <span class="fw-bold">使用者</span>
+                                </div>
+                            </div>
+                            <div class="message-content">${marked.parse(conversation.UserQuery)}</div>
+                        </div>
+                        <div class="ai-response">
+                            <div class="message-header">
+                                <div>
+                                    <span class="ai-icon">AI</span>
+                                    <span class="fw-bold">AI助手</span>
+                                </div>
+                            </div>
+                            <div class="message-content">${marked.parse(conversation.AIResponse)}</div>
+                        </div>
+                    `;
+                } else {
+                    // 遍歷排序後的段落
+                    sortedParagraphs.forEach(([number, messages]) => {
+                        // 添加用戶消息
+                        if (messages.user) {
+                            const parsedUserMessage = marked.parse(messages.user);
+                            detailHTML += `
+                                <div class="user-query">
+                                    <div class="message-header">
+                                        <div>
+                                            <span class="user-icon">U</span>
+                                            <span class="fw-bold">使用者</span>
+                                        </div>
+                                        <span class="message-number">#${number}</span>
+                                    </div>
+                                    <div class="message-content">${parsedUserMessage}</div>
+                                    <div class="message-reactions">
+                                        <button class="reaction-button copy-btn" data-message-type="user" data-message-number="${number}">
+                                            <i class="bi bi-clipboard"></i> 複製
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        // 添加 AI 消息
+                        if (messages.ai) {
+                            const parsedAIMessage = marked.parse(messages.ai);
+                            detailHTML += `
+                                <div class="ai-response">
+                                    <div class="message-header">
+                                        <div>
+                                            <span class="ai-icon">AI</span>
+                                            <span class="fw-bold">AI助手</span>
+                                        </div>
+                                        <span class="message-number">#${number}</span>
+                                    </div>
+                                    <div class="message-content">${parsedAIMessage}</div>
+                                    <div class="message-reactions">
+                                        <button class="reaction-button copy-btn" data-message-type="ai" data-message-number="${number}">
+                                            <i class="bi bi-clipboard"></i> 複製
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+                
+                detailHTML += '</div>'; // 關閉 conversation-messages div
+                
+                // 如果有代碼片段，顯示它們
+                if (conversation.snippets && conversation.snippets.length > 0) {
+                    detailHTML += `
+                        <div class="mt-4 pt-3 border-top">
+                            <h5 class="mb-3">
+                                <i class="bi bi-code-square"></i> 
+                                代碼片段 <span class="badge bg-secondary">${conversation.snippets.length}</span>
+                            </h5>
+                            <div class="accordion" id="codeSnippetsAccordion">
+                    `;
+                    
+                    conversation.snippets.forEach((snippet, index) => {
+                        detailHTML += `
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading${index}">
+                                    <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapse${index}" 
+                                            aria-expanded="${index === 0}" aria-controls="collapse${index}">
+                                        片段 ${index + 1} - ${snippet.Language || '無語言'}
+                                    </button>
+                                </h2>
+                                <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                                     aria-labelledby="heading${index}" data-bs-parent="#codeSnippetsAccordion">
+                                    <div class="accordion-body p-0">
+                                        <div class="d-flex justify-content-end p-2 border-bottom">
+                                            <button class="btn btn-sm btn-outline-secondary copy-code-btn" 
+                                                    data-snippet-index="${index}">
+                                                <i class="bi bi-clipboard"></i> 複製代碼
+                                            </button>
+                                        </div>
+                                        <pre class="m-0"><code class="${snippet.Language}">${escapeHtml(snippet.Code)}</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    detailHTML += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                conversationDetail.innerHTML = detailHTML;
+                
+                // 應用程式碼高亮
+                document.querySelectorAll('pre code').forEach(block => {
+                    hljs.highlightElement(block);
+                });
+                
+                // 添加複製按鈕功能
+                document.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const type = this.getAttribute('data-message-type');
+                        const number = parseInt(this.getAttribute('data-message-number'));
+                        
+                        let textToCopy = '';
+                        if (type === 'user' && paragraphMap.has(number)) {
+                            textToCopy = paragraphMap.get(number).user;
+                        } else if (type === 'ai' && paragraphMap.has(number)) {
+                            textToCopy = paragraphMap.get(number).ai;
+                        }
+                        
+                        if (textToCopy) {
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                // 更改按鈕文本為已複製
+                                const originalText = this.innerHTML;
+                                this.innerHTML = '<i class="bi bi-check2"></i> 已複製';
+                                
+                                // 2秒後恢復
+                                setTimeout(() => {
+                                    this.innerHTML = originalText;
+                                }, 2000);
+                            });
+                        }
+                    });
+                });
+                
+                // 添加代碼複製按鈕功能
+                document.querySelectorAll('.copy-code-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-snippet-index'));
+                        const code = conversation.snippets[index].Code;
+                        
+                        navigator.clipboard.writeText(code).then(() => {
+                            // 更改按鈕文本為已複製
+                            const originalText = this.innerHTML;
+                            this.innerHTML = '<i class="bi bi-check2"></i> 已複製';
+                            
+                            // 2秒後恢復
+                            setTimeout(() => {
+                                this.innerHTML = originalText;
+                            }, 2000);
+                        });
+                    });
+                });
+            } catch (error) {
+                console.error('載入對話詳情失敗:', error);
+                conversationDetail.innerHTML = '<div class="alert alert-danger">載入對話詳情失敗</div>';
+            }
+        }
+        
+        // 執行搜索
+        async function performSearch() {
+            const keyword = searchKeyword.value.trim();
+            const category = searchCategory.value;
+            const startDate = searchStartDate.value;
+            const endDate = searchEndDate.value;
+            
+            // 構建查詢參數
+            const params = new URLSearchParams();
+            if (keyword) params.append('keyword', keyword);
+            if (category) params.append('category', category);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            
+            try {
+                conversationList.innerHTML = '<li class="list-group-item text-center">搜索中...</li>';
+                
+                const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`);
+                const results = await response.json();
+                
+                if (results.length === 0) {
+                    conversationList.innerHTML = '<li class="list-group-item text-center">沒有符合條件的結果</li>';
+                    conversationCount.textContent = '0';
+                    return;
+                }
+                
+                conversationListTitle.textContent = '搜索結果';
+
+                conversationCount.textContent = results.length;
+                const statusMap = {
+                    resolved: { text: '✅ 已解決', class: 'bg-success text-white' },
+                    pending: { text: '🕓 待處理', class: 'bg-danger text-white' },
+                    other: { text: '📌 其他', class: 'bg-warning text-dark' }
+                };
+
+
+                conversationList.innerHTML = results.map(conv => {
+                    const { text: statusText, class: badgeClass } = conv.StatusTag && statusMap[conv.StatusTag]
+                    ? statusMap[conv.StatusTag]
+                    : { text: '❓ 未標記', class: 'bg-secondary text-white' };
+                                    
+                    return `
+                        <li class="list-group-item conversation-item" data-conversation-id="${conv.ConversationID}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold">${conv.Title || '無標題'}</div>
+                                    <small class="text-muted">${formatDate(new Date(conv.CreatedDate))}</small>
+                                </div>
+                                <span class="badge bg-secondary badge-category">${conv.Category || '未分類'}</span>
+                            </div>
+                            <div class="small text-truncate mt-1">${conv.Summary || '無摘要'}</div>
+                            <span class="badge ${badgeClass}"><i class="bi bi-tag-fill"></i> 狀態：${statusText}</span><br/>
+                            <small class="text-muted">專案: ${conv.ProjectName}</small>
+                        </li>
+                    `;
+                }).join('');
+                
+                // 添加點擊事件
+                addConversationClickListeners();
+            } catch (error) {
+                console.error('搜索失敗:', error);
+                conversationList.innerHTML = '<li class="list-group-item text-center text-danger">搜索失敗</li>';
+            }
+        }
+        
+        // 載入所有類別
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/categories`);
+                const categories = await response.json();
+                
+                let optionsHTML = '<option value="">所有類別</option>';
+                categories.forEach(category => {
+                    optionsHTML += `<option value="${category}">${category}</option>`;
+                });
+                
+                searchCategory.innerHTML = optionsHTML;
+            } catch (error) {
+                console.error('載入類別失敗:', error);
+            }
+        }
+        
+        // 添加對話點擊事件監聽器
+        function addConversationClickListeners() {
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const conversationId = this.getAttribute('data-conversation-id');
+                    loadConversationDetail(conversationId);
+                    
+                    // 更新活動狀態
+                    document.querySelectorAll('.conversation-item').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        }
+        
+        // 解析帶有段落標記的消息
+        // 強化段落標記解析函數，處理可能的特殊情況
+        function parseMessagesByParagraphMarker(text) {
+            if (!text) return [];
+            
+            console.log('解析文本長度:', text.length);
+            console.log('文本前30個字符:', text.substring(0, 30));
+            
+            // 清理可能影響解析的特殊標記
+            let cleanedText = text
+                .replace(/(\w+)複製編輯/g, '') // 移除類似 "bash複製編輯" 的標記
+                .replace(/複製編輯/g, '');     // 移除單獨的 "複製編輯" 標記
+            
+            // 檢查是否有段落標記
+            const hasMarkers = /\[對話段落:\d+\]/g.test(cleanedText);
+            console.log('是否找到段落標記:', hasMarkers);
+            
+            if (!hasMarkers) {
+                console.log('未找到段落標記，返回整個文本作為一個段落');
+                return [{
+                    paragraphNumber: 1,
+                    content: text.trim()
+                }];
+            }
+            
+            // 使用段落標記作為分隔符
+            const regex = /\[對話段落:(\d+)\]\n?([\s\S]*?)(?=\[對話段落:\d+\]|$)/g;
+            let matches = [...cleanedText.matchAll(regex)];
+            
+            console.log('找到的段落數量:', matches.length);
+            
+            // 如果沒有匹配到任何段落，仍然返回整個文本
+            if (matches.length === 0) {
+                console.log('正則表達式未匹配到段落，返回整個文本');
+                return [{
+                    paragraphNumber: 1,
+                    content: text.trim()
+                }];
+            }
+            
+            // 將匹配結果轉換為對象數組，包含段落編號和內容
+            const result = matches.map(match => ({
+                paragraphNumber: parseInt(match[1]),
+                content: match[2].trim()
+            }));
+            
+            console.log('解析結果:', result.map(r => `段落 ${r.paragraphNumber}: ${r.content.substring(0, 20)}...`));
+            
+            return result;
+        }
+        
+        // 格式化日期
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            // 台灣是 UTC+8
+            const offsetMs = 8 * 60 * 60 * 1000;
+            const taiwanDate = new Date(date.getTime());
+            console.log(taiwanDate.getUTCHours());
+            return `${taiwanDate.getUTCFullYear()}-${(taiwanDate.getUTCMonth() + 1).toString().padStart(2, '0')}-${taiwanDate.getUTCDate().toString().padStart(2, '0')} ${taiwanDate.getUTCHours().toString().padStart(2, '0')}:${taiwanDate.getUTCMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // HTML轉義
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        // 頁面載入時執行
+        window.addEventListener('DOMContentLoaded', () => {
+            loadProjects();
+            loadCategories();
+            
+            // 綁定搜索按鈕點擊事件
+            searchButton.addEventListener('click', performSearch);
+            
+            // 支持按Enter鍵搜索
+            searchKeyword.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            const startInput = document.getElementById("search-start-date");
+            const endInput = document.getElementById("search-end-date");
+
+            const today = new Date();
+            // 計算週一（0=Sunday, 1=Monday, ..., 6=Saturday）
+            const dayOfWeek = today.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // 若是週日，回推6天；否則回推到週一
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + mondayOffset);
+
+            // 格式化 yyyy-mm-dd
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            const sunday = new Date(today);
+            sunday.setDate(monday.getDate() + 6);
+
+            startInput.value = formatDate(monday);
+            
+            endInput.value = formatDate(sunday);
+        });
+    </script>
+</body>
+</html>
