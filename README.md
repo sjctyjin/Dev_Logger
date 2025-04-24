@@ -32,7 +32,6 @@ npm -v
 ### 1. 初始化專案資料夾
 
 ```bash
-mkdir Dev_Logger
 cd Dev_Logger
 npm init -y
 ```
@@ -175,7 +174,6 @@ GO
 ### 1. 建立新資料夾與初始化
 
 ```bash
-mkdir dev-logger-viewer
 cd dev-logger-viewer
 npm init -y
 ```
