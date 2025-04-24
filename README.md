@@ -239,7 +239,7 @@ node server.js
     - 抓取整段使用者與 AI 對話
     - 自動送出 POST 至 `/api/log-conversation`
 
-![IIS設定](https://blog.miniasp.com/image.axd?picture=image_2488.png)
+![IIS設定](https://raw.githubusercontent.com/sjctyjin/Dev_Logger/refs/heads/main/dev-log.jpg)
 
 ---
 
